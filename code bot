@@ -1,0 +1,130 @@
+from typing import Text
+import gtts
+import telebot
+import numpy
+import random
+import qrcode
+from PIL import Image
+from telebot import types
+
+from gtts import gTTS
+from datetime import date,datetime
+from khayyam import jalali_date,jalali_datetime
+
+
+
+bot = telebot.TeleBot("211547********")
+@bot.message_handler(commands=['start'])
+def welcome(message):
+    
+    name = message.from_user.first_name
+    bot.reply_to(message,f"خوش امدید{name}")
+
+##bot.infinity_polling()
+
+
+numbers = dict()
+
+@bot.message_handler(commands=('game'))
+def guess_number(message):
+    
+    bot.reply_to(message,"یک عدد حدس بزن!")
+    numbers[message.chat.id] = random.randint(0, 100)
+    @bot.message_handler(func=lambda message: True)
+    def checking(message):
+   
+            try:
+                user_message = int(message.text)
+                if user_message > numbers[message.chat.id]:
+                     bot.send_message(message.chat.id, "عدد کوچکتر بگو ")
+                elif user_message < numbers[message.chat.id]:
+                       bot.send_message(message.chat.id, "عدد بزرگتر بگو ")
+                else:
+                    bot.send_message(message.chat.id, "آفففرین درست حدس زدی")
+            except ValueError:
+                 bot.send_message(message.chat.id, "برای این بازی باید یک عدد وارد کنید")
+            except (TypeError, KeyError):
+                  bot.send_message(message.chat.id, "شما بازی را شروع نکرده اید لطفا کامند /game را بزنید تا بازی شروع شود")
+
+
+ 
+
+
+@bot.message_handler(commands=['voice'])
+def converttovoice(message):
+    Text = bot.send_message(message.chat.id, 'لطفا متنی که میخواهید به صدا تبدیل شود را ارسال کنید (انگیسی)')
+    
+    bot.register_next_step_handler(Text, voice)
+    
+
+
+def voice(Text):
+ 
+        user_text = Text.text
+        language = 'en'
+        myojc = gTTS(text=user_text, lang=language, slow=False)
+        myojc.save("voice.mp3")
+        voice = open('voice.mp3', 'rb')
+        bot.send_voice(Text.chat.id, voice)
+
+@bot.message_handler(commands=['age'])
+def converttime(message):
+    birthday = bot.send_message(message.chat.id,'تاریخ تولدتان را به شمسی وارد کنید')        
+    bot.register_next_step_handler(birthday, sen)
+
+def sen(age):
+    user_birth=age.text
+    sal =  int(user_birth[6:10])
+    now=jalali_datetime.JalaliDatetime.now().year
+    sensh=now-sal
+    bot.send_message(age.chat.id,f"سن شما :{sensh}")
+
+@bot.message_handler(commands=['max'])
+def showmax(message):
+        array = bot.send_message(message.chat.id,'لطفا ارایه خود را وارد کنید تا بزرگترین ان را نمایش دهم ')
+        bot.register_next_step_handler(array,checkmax)
+
+def checkmax(numbers):
+        user_array = numbers.text
+        x=user_array.split(',')
+        x = list(map(int, x))
+        y=max(x)
+        bot.send_message(numbers.chat.id,f"بزرگترین عدد شما{y} ")
+        
+@bot.message_handler(commands='argmax')
+def araaymax(message):
+    array =  bot.send_message(message.chat.id,'لطفا ارایه مد نظر خود را وارد کنید تا اندیس بزرگترین ان را نمایش دهم')
+    bot.register_next_step_handler(array,checkindex)
+
+def checkindex(nums):
+    user_array=nums.text
+    x=user_array.split(',')
+    x=list(map(int,x))
+    y=x.index(max(x))
+    
+    bot.send_message(nums.chat.id,f"اندیس بزرگترین آرایه شما {y}")
+
+@bot.message_handler(commands='qrcode')
+def qrcode(message):
+    text = bot.send_message(message.chat.id,'لطفا جمله ای که میخواهید به qrcodeتبدیل کنید ارسال کنید ')     
+    bot.register_next_step_handler(text,makeqr)
+def makeqr(text):
+    import qrcode
+    user_text = text.text
+    img=qrcode.make(user_text)
+    
+    img.save("qrcode.png")
+    qrcode = open('qrcode.png','rb')
+    bot.send_photo(text.chat.id,qrcode)
+@bot.message_handler(commands='help')
+def help(message):
+    bot.send_message(message.chat.id,"کامند /start یه کاربر خوش امد میگوید ")  
+    bot.send_message(message.chat.id,"کامند /game بازی حدس عدد را اجرا میکند ")    
+    bot.send_message(message.chat.id,"کامند /age تاریخ تولدتان را میگیرد و سن شمارا محاسبه میکند  ")  
+    bot.send_message(message.chat.id,"کامند /voice یک جمله انگلیسی دریافت و انرا به ویس تبدیل میکند")   
+    bot.send_message(message.chat.id,"کامند /max یک ارایه دریافت میکند و ماکسیمم آن را نمایش میدهد ")
+    bot.send_message(message.chat.id," کامند /argmax یک ارایه دریافت میکند و اندیس ارایه ماکسیمم را نمایش میدهد")
+    bot.send_message(message.chat.id,"کامند /qrcode یک رشته دریافت میکند و ان را به کد قابل اسکن ارسال میکند ")    
+        
+            
+bot.infinity_polling()     
